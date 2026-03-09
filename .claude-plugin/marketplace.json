@@ -1,10 +1,10 @@
 {
-  "name": "dan-plugins",
+  "name": "claude-marketplace",
   "owner": {
-    "name": "dan"
+    "name": "Dan Singer"
   },
   "metadata": {
-    "description": "Dan's consolidated Claude Code plugin marketplace",
+    "description": "A Claude Code plugin marketplace",
     "version": "1.0.0"
   },
   "plugins": [
