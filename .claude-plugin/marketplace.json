@@ -1,0 +1,30 @@
+{
+  "name": "dan-plugins",
+  "owner": {
+    "name": "dan"
+  },
+  "metadata": {
+    "description": "Dan's consolidated Claude Code plugin marketplace",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "beepboop",
+      "source": "./beepboop/plugin",
+      "description": "Plays sounds on Claude Code hook events and sends desktop notifications",
+      "version": "1.3.0"
+    },
+    {
+      "name": "moodring",
+      "source": "./moodring/plugin",
+      "description": "Sonifies an AI model's self-reported internal state by playing mood-mapped synthesized sounds",
+      "version": "1.0.0"
+    },
+    {
+      "name": "ideate",
+      "source": "./ideate",
+      "description": "Structured SDLC workflow for planning, building, and validating software projects",
+      "version": "0.2.0"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+[submodule "beepboop"]
+	path = beepboop
+	url = git@github.com:devnill/beepboop.git
+[submodule "moodring"]
+	path = moodring
+	url = git@github.com:devnill/moodring.git
+[submodule "ideate"]
+	path = ideate
+	url = git@github.com:devnill/ideate.git
