@@ -12,7 +12,7 @@
       "name": "beepboop",
       "source": "./beepboop/plugin",
       "description": "Plays sounds on Claude Code hook events and sends desktop notifications",
-      "version": "1.3.0"
+      "version": "1.3.1"
     },
     {
       "name": "moodring",
