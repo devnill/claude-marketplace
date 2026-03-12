@@ -24,7 +24,7 @@
       "name": "ideate",
       "source": "./ideate",
       "description": "Structured SDLC workflow for planning, building, and validating software projects",
-      "version": "0.2.0"
+      "version": "0.6.0"
     }
   ]
 }
