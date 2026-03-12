@@ -8,18 +8,32 @@ die() { echo "ERROR: $1" >&2; exit 1; }
 # Ensure we're at the repo root
 [ -f "$MANIFEST" ] || die "Must be run from the repo root (marketplace.json not found)"
 
-cmd_update() {
-    echo "Updating submodules..."
-    git submodule update --remote --merge
-    echo "Done."
+# Build the raw.githubusercontent.com URL for a file inside a plugin's repo.
+# url:  https://github.com/owner/repo
+# path: optional subdirectory within the repo (e.g. "plugin"), empty = repo root
+# file: path within the plugin root (e.g. ".claude-plugin/plugin.json")
+raw_url() {
+    github_url="$1"
+    plugin_path="$2"
+    file="$3"
+    raw_base=$(echo "$github_url" | sed 's|https://github.com/|https://raw.githubusercontent.com/|')
+    if [ -n "$plugin_path" ]; then
+        echo "${raw_base}/main/${plugin_path}/${file}"
+    else
+        echo "${raw_base}/main/${file}"
+    fi
 }
 
 cmd_validate() {
     echo "Validating manifest..."
-    failed=0
 
     result=$(python3 - <<'EOF'
 import json, sys
+try:
+    from urllib.request import urlopen
+    from urllib.error import URLError
+except ImportError:
+    from urllib2 import urlopen, URLError
 
 manifest_path = ".claude-plugin/marketplace.json"
 try:
@@ -32,35 +46,36 @@ except Exception as e:
 errors = []
 warnings = []
 
+def raw_url(github_url, plugin_path, file):
+    base = github_url.replace("https://github.com/", "https://raw.githubusercontent.com/")
+    if plugin_path:
+        return f"{base}/main/{plugin_path}/{file}"
+    return f"{base}/main/{file}"
+
 for plugin in manifest.get("plugins", []):
     name = plugin.get("name", "<unknown>")
-    source = plugin.get("source", "")
+    url = plugin.get("url", "")
+    path = plugin.get("path", "")
     manifest_version = plugin.get("version", "")
 
-    if not source:
-        errors.append(f"{name}: missing 'source' field")
+    if not url:
+        errors.append(f"{name}: missing 'url' field")
         continue
 
-    import os
-    if not os.path.isdir(source):
-        errors.append(f"{name}: source path '{source}' does not exist")
-        continue
-
-    plugin_json_path = f"{source}/.claude-plugin/plugin.json"
-    if not os.path.isfile(plugin_json_path):
-        errors.append(f"{name}: plugin.json not found at '{plugin_json_path}'")
-        continue
-
+    fetch_url = raw_url(url, path, ".claude-plugin/plugin.json")
     try:
-        with open(plugin_json_path) as f:
-            plugin_data = json.load(f)
+        with urlopen(fetch_url, timeout=10) as resp:
+            plugin_data = json.loads(resp.read().decode())
+    except URLError as e:
+        errors.append(f"{name}: could not fetch plugin.json from '{fetch_url}': {e}")
+        continue
     except Exception as e:
-        errors.append(f"{name}: plugin.json is invalid JSON: {e}")
+        errors.append(f"{name}: invalid plugin.json at '{fetch_url}': {e}")
         continue
 
     plugin_version = plugin_data.get("version", "")
     if manifest_version != plugin_version:
-        warnings.append(f"{name}: manifest version '{manifest_version}' != plugin.json version '{plugin_version}'")
+        warnings.append(f"{name}: manifest version '{manifest_version}' != remote version '{plugin_version}'")
     else:
         print(f"  OK  {name} @ {plugin_version}")
 
@@ -90,26 +105,42 @@ EOF
 }
 
 cmd_sync() {
-    echo "Syncing plugin versions from plugin.json files..."
+    echo "Syncing plugin versions from remote plugin.json files..."
     python3 - <<'EOF'
-import json, sys, os
+import json, sys
+try:
+    from urllib.request import urlopen
+    from urllib.error import URLError
+except ImportError:
+    from urllib2 import urlopen, URLError
 
 manifest_path = ".claude-plugin/marketplace.json"
 with open(manifest_path) as f:
     manifest = json.load(f)
 
+def raw_url(github_url, plugin_path, file):
+    base = github_url.replace("https://github.com/", "https://raw.githubusercontent.com/")
+    if plugin_path:
+        return f"{base}/main/{plugin_path}/{file}"
+    return f"{base}/main/{file}"
+
 changed = []
 for plugin in manifest.get("plugins", []):
     name = plugin.get("name", "<unknown>")
-    source = plugin.get("source", "")
-    plugin_json_path = f"{source}/.claude-plugin/plugin.json"
+    url = plugin.get("url", "")
+    path = plugin.get("path", "")
 
-    if not os.path.isfile(plugin_json_path):
-        print(f"  SKIP {name}: plugin.json not found at '{plugin_json_path}'")
+    if not url:
+        print(f"  SKIP {name}: missing 'url' field")
         continue
 
-    with open(plugin_json_path) as f:
-        plugin_data = json.load(f)
+    fetch_url = raw_url(url, path, ".claude-plugin/plugin.json")
+    try:
+        with urlopen(fetch_url, timeout=10) as resp:
+            plugin_data = json.loads(resp.read().decode())
+    except Exception as e:
+        print(f"  SKIP {name}: could not fetch plugin.json: {e}")
+        continue
 
     new_version = plugin_data.get("version", "")
     old_version = plugin.get("version", "")
@@ -176,29 +207,49 @@ EOF
 
 cmd_add() {
     name="$1"
-    source="$2"
-    desc="$3"
-    [ -n "$name" ] || die "usage: add <name> <source> <desc>"
-    [ -n "$source" ] || die "usage: add <name> <source> <desc>"
-    [ -n "$desc" ] || die "usage: add <name> <source> <desc>"
+    url="$2"
+    # Optional: if 4th arg exists, it's the path and 5th is desc; otherwise 3rd is desc
+    if [ -n "$5" ]; then
+        plugin_path="$3"
+        desc="$4 $5"
+    elif [ -n "$4" ]; then
+        # Check if $3 looks like a path (no spaces) or the start of a description
+        # Convention: if 4 args given, $3 is plugin_path and $4 is desc
+        plugin_path="$3"
+        desc="$4"
+    else
+        plugin_path=""
+        desc="$3"
+    fi
 
-    python3 - "$name" "$source" "$desc" <<'EOF'
-import json, sys, os
+    [ -n "$name" ] || die "usage: add <name> <url> [<path>] <desc>"
+    [ -n "$url" ]  || die "usage: add <name> <url> [<path>] <desc>"
+    [ -n "$desc" ] || die "usage: add <name> <url> [<path>] <desc>"
 
-name, source, desc = sys.argv[1], sys.argv[2], sys.argv[3]
+    python3 - "$name" "$url" "$plugin_path" "$desc" <<'EOF'
+import json, sys
+try:
+    from urllib.request import urlopen
+    from urllib.error import URLError
+except ImportError:
+    from urllib2 import urlopen, URLError
+
+name, url, plugin_path, desc = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 manifest_path = ".claude-plugin/marketplace.json"
 
-if not os.path.isdir(source):
-    print(f"ERROR: source path '{source}' does not exist", file=sys.stderr)
-    sys.exit(1)
+def raw_url(github_url, path, file):
+    base = github_url.replace("https://github.com/", "https://raw.githubusercontent.com/")
+    if path:
+        return f"{base}/main/{path}/{file}"
+    return f"{base}/main/{file}"
 
-plugin_json_path = f"{source}/.claude-plugin/plugin.json"
-if not os.path.isfile(plugin_json_path):
-    print(f"ERROR: plugin.json not found at '{plugin_json_path}'", file=sys.stderr)
+fetch_url = raw_url(url, plugin_path, ".claude-plugin/plugin.json")
+try:
+    with urlopen(fetch_url, timeout=10) as resp:
+        plugin_data = json.loads(resp.read().decode())
+except Exception as e:
+    print(f"ERROR: could not fetch plugin.json from '{fetch_url}': {e}", file=sys.stderr)
     sys.exit(1)
-
-with open(plugin_json_path) as f:
-    plugin_data = json.load(f)
 
 version = plugin_data.get("version", "0.0.0")
 
@@ -210,18 +261,17 @@ for existing in manifest.get("plugins", []):
         print(f"ERROR: plugin '{name}' already exists in manifest", file=sys.stderr)
         sys.exit(1)
 
-manifest["plugins"].append({
-    "name": name,
-    "source": source,
-    "description": desc,
-    "version": version
-})
+entry = {"name": name, "url": url, "description": desc, "version": version}
+if plugin_path:
+    entry["path"] = plugin_path
+
+manifest["plugins"].append(entry)
 
 with open(manifest_path, "w") as f:
     json.dump(manifest, f, indent=2)
     f.write("\n")
 
-print(f"Added '{name}' @ {version} from '{source}'")
+print(f"Added '{name}' @ {version} from '{url}'")
 EOF
 }
 
@@ -232,10 +282,6 @@ cmd_release() {
         *) die "release type must be one of: major, minor, patch" ;;
     esac
 
-    echo "==> update"
-    cmd_update
-
-    echo ""
     echo "==> sync"
     cmd_sync
 
@@ -252,22 +298,20 @@ cmd_release() {
 }
 
 case "$1" in
-    update)   cmd_update ;;
     validate) cmd_validate ;;
     sync)     cmd_sync ;;
     bump)     cmd_bump "$2" ;;
-    add)      cmd_add "$2" "$3" "$4" ;;
+    add)      cmd_add "$2" "$3" "$4" "$5" "$6" ;;
     release)  cmd_release "$2" ;;
     *)
         echo "Usage: $0 <command> [args]"
         echo ""
         echo "Commands:"
-        echo "  update                        Pull all submodules to latest remote"
-        echo "  validate                      Check manifest: JSON validity, paths, version consistency"
-        echo "  sync                          Read each plugin's plugin.json and update manifest versions"
-        echo "  bump <major|minor|patch>      Bump marketplace metadata.version"
-        echo "  add <name> <source> <desc>    Add a new plugin entry to the manifest"
-        echo "  release <major|minor|patch>   Full flow: update → sync → validate → bump"
+        echo "  validate                           Check manifest: JSON validity, remote reachability, version consistency"
+        echo "  sync                               Fetch each plugin's remote plugin.json and update manifest versions"
+        echo "  bump <major|minor|patch>           Bump marketplace metadata.version"
+        echo "  add <name> <url> [<path>] <desc>   Add a new plugin entry (version fetched from GitHub)"
+        echo "  release <major|minor|patch>        Full flow: sync → validate → bump"
         exit 1
         ;;
 esac
