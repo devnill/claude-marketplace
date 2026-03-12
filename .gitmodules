@@ -1,9 +1,12 @@
 [submodule "beepboop"]
 	path = beepboop
-	url = git@github.com:devnill/beepboop.git
+	url = https://github.com/devnill/beepboop
 [submodule "moodring"]
 	path = moodring
-	url = git@github.com:devnill/moodring.git
+	url = https://github.com/devnill/moodring
 [submodule "ideate"]
 	path = ideate
-	url = git@github.com:devnill/ideate.git
+	url = https://github.com/devnill/ideate
+[submodule "outpost"]
+	path = outpost
+	url = https://github.com/devnill/outpost
