@@ -10,27 +10,39 @@
   "plugins": [
     {
       "name": "beepboop",
-      "url": "https://github.com/devnill/beepboop",
-      "path": "plugin",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/devnill/beepboop",
+        "path": "plugin"
+      },
       "description": "Plays sounds on Claude Code hook events and sends desktop notifications",
       "version": "1.3.1"
     },
     {
       "name": "moodring",
-      "url": "https://github.com/devnill/moodring",
-      "path": "plugin",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/devnill/moodring",
+        "path": "plugin"
+      },
       "description": "Sonifies an AI model's self-reported internal state by playing mood-mapped synthesized sounds",
       "version": "1.0.0"
     },
     {
       "name": "ideate",
-      "url": "https://github.com/devnill/ideate",
+      "source": {
+        "source": "github",
+        "repo": "devnill/ideate"
+      },
       "description": "Structured SDLC workflow for planning, building, and validating software projects through iterative interview, execution, and review with progressive decomposition, continuous review, and autonomous convergence loop (brrr).",
       "version": "1.0.0"
     },
     {
       "name": "outpost",
-      "url": "https://github.com/devnill/outpost",
+      "source": {
+        "source": "github",
+        "repo": "devnill/outpost"
+      },
       "description": "MCP orchestration infrastructure for delegating work to separate Claude Code instances, supporting both local subprocess and remote process execution.",
       "version": "0.1.0"
     }

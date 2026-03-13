@@ -24,20 +24,21 @@ Must be run from the repo root.
 
 `.claude-plugin/marketplace.json`:
 - `metadata.version` — the marketplace's own version
-- `plugins[].url` — GitHub repo URL (e.g. `https://github.com/devnill/beepboop`)
-- `plugins[].path` — optional subdirectory within the repo where the plugin root lives (e.g. `plugin`); omit if the plugin root is the repo root
+- `plugins[].source` — where to fetch the plugin; one of:
+  - `{ "source": "github", "repo": "owner/repo" }` — plugin at repo root
+  - `{ "source": "git-subdir", "url": "https://github.com/owner/repo", "path": "subdir" }` — plugin in a subdirectory
 - `plugins[].version` — version as recorded in the manifest (kept in sync with each plugin's remote `plugin.json`)
 
-Each plugin's canonical version lives at `<url>/blob/main/<path>/.claude-plugin/plugin.json`. Run `sync` to pull remote versions into the manifest.
+Each plugin's canonical version lives in its remote `.claude-plugin/plugin.json`. Run `sync` to pull remote versions into the manifest.
 
 ## Plugin Registry
 
-| Plugin | URL | Path | Notes |
-|---|---|---|---|
-| beepboop | `https://github.com/devnill/beepboop` | `plugin` | Has a `generate.sh` for building sounds |
-| moodring | `https://github.com/devnill/moodring` | `plugin` | Has a `generate.sh` for building sounds |
-| ideate | `https://github.com/devnill/ideate` | _(root)_ | SDLC workflow skills and agents |
-| outpost | `https://github.com/devnill/outpost` | _(root)_ | MCP orchestration; requires Python |
+| Plugin | Source | Notes |
+|---|---|---|
+| beepboop | `git-subdir` → `devnill/beepboop`, path `plugin` | Has a `generate.sh` for building sounds |
+| moodring | `git-subdir` → `devnill/moodring`, path `plugin` | Has a `generate.sh` for building sounds |
+| ideate | `github` → `devnill/ideate` | SDLC workflow skills and agents |
+| outpost | `github` → `devnill/outpost` | MCP orchestration; requires Python |
 
 ## Tooling
 

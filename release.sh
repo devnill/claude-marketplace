@@ -8,22 +8,6 @@ die() { echo "ERROR: $1" >&2; exit 1; }
 # Ensure we're at the repo root
 [ -f "$MANIFEST" ] || die "Must be run from the repo root (marketplace.json not found)"
 
-# Build the raw.githubusercontent.com URL for a file inside a plugin's repo.
-# url:  https://github.com/owner/repo
-# path: optional subdirectory within the repo (e.g. "plugin"), empty = repo root
-# file: path within the plugin root (e.g. ".claude-plugin/plugin.json")
-raw_url() {
-    github_url="$1"
-    plugin_path="$2"
-    file="$3"
-    raw_base=$(echo "$github_url" | sed 's|https://github.com/|https://raw.githubusercontent.com/|')
-    if [ -n "$plugin_path" ]; then
-        echo "${raw_base}/main/${plugin_path}/${file}"
-    else
-        echo "${raw_base}/main/${file}"
-    fi
-}
-
 cmd_validate() {
     echo "Validating manifest..."
 
@@ -46,23 +30,36 @@ except Exception as e:
 errors = []
 warnings = []
 
-def raw_url(github_url, plugin_path, file):
-    base = github_url.replace("https://github.com/", "https://raw.githubusercontent.com/")
-    if plugin_path:
-        return f"{base}/main/{plugin_path}/{file}"
-    return f"{base}/main/{file}"
+def raw_url(source, file):
+    """Build a raw.githubusercontent.com URL for a file inside a plugin's repo."""
+    src_type = source.get("source", "")
+    if src_type == "github":
+        repo = source.get("repo", "")
+        return f"https://raw.githubusercontent.com/{repo}/main/{file}"
+    elif src_type == "git-subdir":
+        url = source.get("url", "").replace("https://github.com/", "https://raw.githubusercontent.com/")
+        path = source.get("path", "")
+        return f"{url}/main/{path}/{file}" if path else f"{url}/main/{file}"
+    elif src_type == "url":
+        url = source.get("url", "").replace("https://github.com/", "https://raw.githubusercontent.com/")
+        url = url.removesuffix(".git")
+        return f"{url}/main/{file}"
+    return ""
 
 for plugin in manifest.get("plugins", []):
     name = plugin.get("name", "<unknown>")
-    url = plugin.get("url", "")
-    path = plugin.get("path", "")
+    source = plugin.get("source")
     manifest_version = plugin.get("version", "")
 
-    if not url:
-        errors.append(f"{name}: missing 'url' field")
+    if not source or not isinstance(source, dict):
+        errors.append(f"{name}: missing or invalid 'source' field")
         continue
 
-    fetch_url = raw_url(url, path, ".claude-plugin/plugin.json")
+    fetch_url = raw_url(source, ".claude-plugin/plugin.json")
+    if not fetch_url:
+        errors.append(f"{name}: unrecognized source type '{source.get('source')}'")
+        continue
+
     try:
         with urlopen(fetch_url, timeout=10) as resp:
             plugin_data = json.loads(resp.read().decode())
@@ -118,23 +115,36 @@ manifest_path = ".claude-plugin/marketplace.json"
 with open(manifest_path) as f:
     manifest = json.load(f)
 
-def raw_url(github_url, plugin_path, file):
-    base = github_url.replace("https://github.com/", "https://raw.githubusercontent.com/")
-    if plugin_path:
-        return f"{base}/main/{plugin_path}/{file}"
-    return f"{base}/main/{file}"
+def raw_url(source, file):
+    """Build a raw.githubusercontent.com URL for a file inside a plugin's repo."""
+    src_type = source.get("source", "")
+    if src_type == "github":
+        repo = source.get("repo", "")
+        return f"https://raw.githubusercontent.com/{repo}/main/{file}"
+    elif src_type == "git-subdir":
+        url = source.get("url", "").replace("https://github.com/", "https://raw.githubusercontent.com/")
+        path = source.get("path", "")
+        return f"{url}/main/{path}/{file}" if path else f"{url}/main/{file}"
+    elif src_type == "url":
+        url = source.get("url", "").replace("https://github.com/", "https://raw.githubusercontent.com/")
+        url = url.removesuffix(".git")
+        return f"{url}/main/{file}"
+    return ""
 
 changed = []
 for plugin in manifest.get("plugins", []):
     name = plugin.get("name", "<unknown>")
-    url = plugin.get("url", "")
-    path = plugin.get("path", "")
+    source = plugin.get("source")
 
-    if not url:
-        print(f"  SKIP {name}: missing 'url' field")
+    if not source or not isinstance(source, dict):
+        print(f"  SKIP {name}: missing or invalid 'source' field")
         continue
 
-    fetch_url = raw_url(url, path, ".claude-plugin/plugin.json")
+    fetch_url = raw_url(source, ".claude-plugin/plugin.json")
+    if not fetch_url:
+        print(f"  SKIP {name}: unrecognized source type '{source.get('source')}'")
+        continue
+
     try:
         with urlopen(fetch_url, timeout=10) as resp:
             plugin_data = json.loads(resp.read().decode())
@@ -213,7 +223,6 @@ cmd_add() {
         plugin_path="$3"
         desc="$4 $5"
     elif [ -n "$4" ]; then
-        # Check if $3 looks like a path (no spaces) or the start of a description
         # Convention: if 4 args given, $3 is plugin_path and $4 is desc
         plugin_path="$3"
         desc="$4"
@@ -236,6 +245,10 @@ except ImportError:
 
 name, url, plugin_path, desc = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 manifest_path = ".claude-plugin/marketplace.json"
+
+# Derive owner/repo from GitHub URL (e.g. https://github.com/owner/repo)
+def github_repo(github_url):
+    return github_url.replace("https://github.com/", "").strip("/")
 
 def raw_url(github_url, path, file):
     base = github_url.replace("https://github.com/", "https://raw.githubusercontent.com/")
@@ -261,10 +274,12 @@ for existing in manifest.get("plugins", []):
         print(f"ERROR: plugin '{name}' already exists in manifest", file=sys.stderr)
         sys.exit(1)
 
-entry = {"name": name, "url": url, "description": desc, "version": version}
 if plugin_path:
-    entry["path"] = plugin_path
+    source = {"source": "git-subdir", "url": url, "path": plugin_path}
+else:
+    source = {"source": "github", "repo": github_repo(url)}
 
+entry = {"name": name, "source": source, "description": desc, "version": version}
 manifest["plugins"].append(entry)
 
 with open(manifest_path, "w") as f:
