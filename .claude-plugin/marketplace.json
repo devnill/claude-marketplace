@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "1.0.1"
+    "version": "1.0.3"
   },
   "plugins": [
     {
@@ -26,7 +26,7 @@
       "name": "ideate",
       "url": "https://github.com/devnill/ideate",
       "description": "Structured SDLC workflow for planning, building, and validating software projects through iterative interview, execution, and review with progressive decomposition, continuous review, and autonomous convergence loop (brrr).",
-      "version": "0.6.0"
+      "version": "1.0.0"
     },
     {
       "name": "outpost",
