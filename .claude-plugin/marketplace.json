@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "1.0.10"
+    "version": "1.1.0"
   },
   "plugins": [
     {
@@ -44,6 +44,15 @@
         "repo": "devnill/outpost"
       },
       "description": "MCP orchestration infrastructure for delegating work to separate Claude Code instances, supporting both local subprocess and remote process execution.",
+      "version": "0.1.0"
+    },
+    {
+      "name": "cyberbrain",
+      "source": {
+        "source": "github",
+        "repo": "devnill/cyberbrain"
+      },
+      "description": "Knowledge capture and retrieval for Claude Code sessions. Extracts durable knowledge beats from conversations and files them into an Obsidian vault for future retrieval.",
       "version": "0.1.0"
     }
   ]
