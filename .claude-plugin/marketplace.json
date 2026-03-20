@@ -54,6 +54,15 @@
       },
       "description": "Knowledge capture and retrieval for Claude Code sessions. Extracts durable knowledge beats from conversations and files them into an Obsidian vault for future retrieval.",
       "version": "1.0.2"
+    },
+    {
+      "name": "hamlet",
+      "source": {
+        "source": "github",
+        "repo": "devnill/hamlet"
+      },
+      "description": "Visualize Claude Code agent activity as a roguelike idle game.",
+      "version": "0.1.0"
     }
   ]
 }
