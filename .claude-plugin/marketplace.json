@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "A Claude Code plugin marketplace",
-    "version": "2.0.8"
+    "version": "2.0.9"
   },
   "plugins": [
     {
@@ -44,7 +44,7 @@
         "repo": "devnill/outpost"
       },
       "description": "MCP orchestration infrastructure for delegating work to separate Claude Code instances, supporting both local subprocess and remote process execution.",
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     {
       "name": "cyberbrain",
@@ -53,7 +53,7 @@
         "repo": "devnill/cyberbrain"
       },
       "description": "Knowledge capture and retrieval for Claude Code sessions. Extracts durable knowledge beats from conversations and files them into an Obsidian vault for future retrieval.",
-      "version": "1.0.2"
+      "version": "1.1.0"
     },
     {
       "name": "hamlet",
@@ -63,6 +63,15 @@
       },
       "description": "Visualize Claude Code agent activity as a roguelike idle game.",
       "version": "0.5.0"
+    },
+    {
+      "name": "guardrail",
+      "source": {
+        "source": "github",
+        "repo": "devnill/guardrail"
+      },
+      "description": "Automates permission allowlists and sandbox configuration for Claude Code projects",
+      "version": "1.0.0"
     }
   ]
 }
