@@ -37,7 +37,7 @@ Each plugin's canonical version lives in its remote `.claude-plugin/plugin.json`
 |---|---|---|
 | beepboop | `git-subdir` → `devnill/beepboop`, path `plugin` | Has a `generate.sh` for building sounds |
 | moodring | `git-subdir` → `devnill/moodring`, path `plugin` | Has a `generate.sh` for building sounds |
-| ideate | `github` → `devnill/ideate` | SDLC workflow skills and agents |
+| ideate | `github` → `ideate-ai/ideate` | SDLC workflow skills and agents |
 | outpost | `github` → `devnill/outpost` | MCP orchestration; requires Python |
 | hamlet | `github` → `devnill/hamlet` | Visualizes Claude Code agent activity as a roguelike idle game |
 
